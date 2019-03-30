@@ -1,0 +1,25 @@
+dist_start:
+  url: jdbc:mysql://
+  username: xx
+  password: xx
+  driver: com.mysql.jdbc.Driver
+
+dist_start_read:
+  url: jdbc:mysql:
+  username: xx
+  password: xx
+  driver: com.mysql.jdbc.Driver
+
+dist_order_elastic_search:
+  host: xxx
+  port: 2800
+  schema: http
+  index: shop_order_index
+  type: shop_order
+dist_solo_mdb_cache:
+  solo.namespace: 401
+  solo.cluster.name: xxxxx
+  solo.default.put.timeout: 86400
+  isTestEnvironment: true
+  environment.name: test
+  isIsolateTestCache: false

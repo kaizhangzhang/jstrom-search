@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<topology>
+    <bolts>
+        <spout>
+            <id>OrderSearchSpout</id>
+            <clazz>com.netease.kaola.distmerchant.common.TableSpout</clazz>
+            <outputfield>gorder_id</outputfield>
+            <!-- 默认topology.workers -->
+            <boltnum>2</boltnum>
+            <!-- 一般是boltnum的倍数，可以不配置，默认每个bolt自动分配一个task -->
+            <tasknum>2</tasknum>
+            <!-- 下一个节点 -->
+            <nextbolt>GorderProcessBolt</nextbolt>
+        </spout>
+        <bolt>
+            <id>GorderProcessBolt</id>
+            <clazz>com.netease.kaola.distmerchant.common.TableReadBolt</clazz>
+            <outputfield>gorder_id</outputfield>
+            <!-- shuffle, fields, all, global,fields-->
+            <grouping>fields</grouping>
+            <boltnum>2</boltnum><!-- 默认值topology.workers -->
+            <nextbolt>TradeGorderDubboBolt</nextbolt> <!-- 下一个节点 -->
+        </bolt>
+        <!-- 末节点不要配置outputfield，否则emit消息发送没人处理acker等待超时，会导致整个topology失败回滚 -->
+        <bolt>
+            <id>TradeGorderDubboBolt</id>
+            <clazz>com.netease.kaola.distmerchant.order.TraderGorderDubboBolt</clazz>
+            <outputfield>item_id</outputfield>
+            <grouping>fields</grouping>
+            <nextbolt>OrderSearchSaveBolt</nextbolt> <!-- 下一个节点 -->
+        </bolt>
+        <bolt>
+            <id>OrderSearchSaveBolt</id>
+            <clazz>com.netease.kaola.distmerchant.common.ElasticSearchSaveBolt</clazz>
+            <grouping>fields</grouping>
+            <boltnum>2</boltnum><!-- 默认值topology.workers -->
+        </bolt>
+    </bolts>
+
+    <bolts>
+        <spout>
+            <id>OrderSearchSpout</id>
+            <datasource>dist_start</datasource>
+            <query>select gorder_id as incrTableDeleteKey, gorder_id from dist_gorder_queue_log limit 2</query>
+            <!-- language=sql -->
+            <insert>insert into dist_gorder_queue_log(gorder_id, create_time, update_time, queue_date) values (?, now(), now(), now())</insert>
+            <delete>delete from dist_gorder_queue_log where gorder_id = ?</delete>
+        </spout>
+        <bolt>
+            <id>GorderProcessBolt</id>
+            <datasource>dist_start</datasource>
+            <!-- language=sql -->
+            <query>select buy_account as gorder_buy_account, gorder_time, benefit_user as shop_id from dist_gorder where gorder_id = ?</query>
+        </bolt>
+        <bolt>
+            <id>TradeGorderDubboBolt</id>
+            <dubbo>gorderCompose</dubbo>
+        </bolt>
+        <bolt>
+            <id>OrderSearchSaveBolt</id>
+            <datasource>dist_order_elastic_search</datasource>
+            <outputcolums>
+                shop_id, gorder_id, order_id, order_status, buy_account_name,
+                buy_account_phone, order_time, order_pay_amount, item_id, apply_status,
+                apply_type, apply_time, goods_id, goods_name, goods_img, sku_id, sku_desc, unit_price, item_count
+            </outputcolums>
+        </bolt>
+    </bolts>
+</topology>

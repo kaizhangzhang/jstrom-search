@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<topology>
+    <bolts>
+        <spout>
+            <id>OrderSearchSpout</id>
+            <clazz>com.netease.kaola.distmerchant.common.TableSpout</clazz>
+            <outputfield>gorder_id</outputfield>
+            <!-- 默认topology.workers -->
+            <boltnum>2</boltnum>
+            <!-- 一般是boltnum的倍数，可以不配置，默认每个bolt自动分配一个task -->
+            <tasknum>2</tasknum>
+            <!-- 下一个节点 -->
+            <nextbolt>GorderProcessBolt</nextbolt>
+        </spout>
+        <bolt>
+            <id>GorderProcessBolt</id>
+            <clazz>com.netease.kaola.distmerchant.common.TableReadBolt</clazz>
+            <outputfield>gorder_id</outputfield>
+            <!-- shuffle, fields, all, global -->
+            <grouping>fields</grouping>
+            <boltnum>2</boltnum><!-- 默认值topology.workers -->
+            <nextbolt>OrderProcessBolt</nextbolt> <!-- 下一个节点 -->
+        </bolt>
+
+        <bolt>
+            <id>OrderProcessBolt</id>
+            <clazz>com.netease.kaola.distmerchant.common.TableReadBolt</clazz>
+            <outputfield>order_id</outputfield>
+            <grouping>fields</grouping>
+            <boltnum>2</boltnum><!-- 默认topology.workers -->
+            <nextbolt>CommissionSaveBolt</nextbolt> <!-- 下一个节点 -->
+        </bolt>
+
+        <!-- 末节点不要配置outputfield，否则emit消息发送没人处理acker等待超时，会导致整个topology失败回滚 -->
+        <bolt>
+            <id>CommissionSaveBolt</id>
+            <clazz>com.netease.kaola.distmerchant.common.TableSaveBolt</clazz>
+            <grouping>fields</grouping>
+            <boltnum>2</boltnum><!-- 默认topology.workers -->
+        </bolt>
+    </bolts>
+
+    <bolts>
+        <spout>
+            <id>OrderSearchSpout</id>
+            <datasource>dist_start</datasource>
+            <query>select gorder_id as incrTableDeleteKey, gorder_id from dist_gorder_queue_log limit 2</query>
+            <!-- language=sql -->
+            <insert>insert into dist_gorder_queue_log(gorder_id, create_time, update_time, queue_date) values (?, now(), now(), now())</insert>
+            <delete>delete from dist_gorder_queue_log where gorder_id = ?</delete>
+        </spout>
+        <bolt>
+            <id>GorderProcessBolt</id>
+            <datasource>dist_start</datasource>
+            <!-- language=sql -->
+            <query>select buy_account as gorder_buy_account, gorder_time, benefit_user as gorder_benefit_user from dist_gorder where gorder_id = ?</query>
+        </bolt>
+        <bolt>
+            <id>OrderProcessBolt</id>
+            <datasource>dist_start</datasource>
+            <!-- language=sql -->
+            <query>select * from dist_order where gorder_id = ?</query>
+        </bolt>
+        <bolt>
+            <id>CommissionSaveBolt</id>
+            <datasource>dist_start</datasource>
+            <!-- language=sql -->
+            <query>select * from dist_commission_change_event where order_id = ?</query>
+            <!-- language=sql -->
+            <insert>
+              insert into dist_commission_change_event(
+                  order_type,
+                  amount,
+                  buy_account,
+                  benefit_user_account,
+                  sales_amount,
+                  event_time,
+                  gorder_id,
+                  order_id,
+                  status
+              )
+              values(?, ?, ?, ?, ?, ?, ?, ?, 1)
+            </insert>
+            <!-- language=sql -->
+            <update>
+                update dist_commission_change_event set
+                order_type = ?,
+                amount = ?,
+                buy_account = ?,
+                benefit_user_account = ?,
+                sales_amount = ?,
+                event_time = ?
+                where gorder_id = ? and order_id = ?
+            </update>
+            <outputcolums>order_type, commission_amount, buy_account, gorder_benefit_user, pay_amount, pay_success_time, gorder_id, order_id</outputcolums>
+        </bolt>
+    </bolts>
+</topology>

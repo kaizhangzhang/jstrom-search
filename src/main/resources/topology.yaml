@@ -1,0 +1,18 @@
+#topology 任务名
+#topology.name: dist-order-search-table
+#topology.name: dist-order-search-dubbo
+
+#订单搜索，timeout: 200(调用dubbo耗时及redies初始化耗时)  workers: 2 spout.pending: 1024
+topology.name: dist-shop-order-search
+
+#运行模式
+#storm.cluster.mode: "local"
+storm.cluster.mode: "distributed"
+
+#spout消息处理完成等待响应（秒/s）根据自己实际业务场景配置,默认30s
+topology.message.timeout.secs: 200
+#worker数量
+topology.workers: 2
+#spout单次emit数据上线，限流作用
+topology.max.spout.pending: 1024
+

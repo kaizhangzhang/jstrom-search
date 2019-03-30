@@ -1,0 +1,25 @@
+dist_start:
+  url: jdbc:mysql://haitao-market-dist-star-10991.rds.cn-east-p1.internal:3331/dist_star?useUnicode=true&characterEncoding=UTF-8
+  username: dist_star
+  password: YPZbPZSdm
+  driver: com.mysql.jdbc.Driver
+
+dist_start_read:
+  url: jdbc:mysql://haitao-market-dist-star-readreplica-47063904-12861.rds.cn-east-p1.internal:3331/dist_star?useUnicode=true&characterEncoding=UTF-8
+  username: dist_star_slave
+  password: HRVDnXYzM
+  driver: com.mysql.jdbc.Driver
+
+dist_order_elastic_search:
+  host: xxxx
+  port: 7900
+  schema: http
+  index: shop_order_index
+  type: shop_order
+dist_solo_mdb_cache:
+  solo.namespace: 343
+  solo.cluster.name: solo_cluster_dist_merchant_compose
+  solo.default.put.timeout: 86400
+  isTestEnvironment: false
+  environment.name: online
+  isIsolateTestCache: false

@@ -1,0 +1,17 @@
+dubbo.zk.address: zookeeper://xxxx:2181
+dubbo.consumer:
+  gorderCompose:
+    interface: com.netease.kaola.order.compose.service.GorderCompose
+    version: "1.0"
+    group: stable_masterjd
+    timeout: 5000
+
+  aftersaleInfoFacade:
+    interface: com.netease.kaola.facade.AftersaleInfoFacade
+    version: "1.0"
+    group: stable_masterjd
+
+  orderAddressCompose:
+    interface: com.netease.kaola.order.compose.service.address.OrderAddressCompose
+    version: "1.0"
+    group: stable_masterjd

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<topology>
+    <bolts>
+        <spout>
+            <id>GorderIncrSpout</id>
+            <clazz>com.netease.kaola.distmerchant.common.TableSpout</clazz>
+            <outputfield>gorder_id</outputfield>
+            <nextbolt>DistGorderTableBolt</nextbolt>
+        </spout>
+        <bolt>
+            <id>DistGorderTableBolt</id>
+            <clazz>com.netease.kaola.distmerchant.common.TableReadBolt</clazz>
+            <outputfield>gorder_id</outputfield>
+            <!-- shuffle, fields, all, global,fields-->
+            <grouping>fields</grouping>
+            <nextbolt>TradeGorderDubboBolt</nextbolt> <!-- 下一个节点 -->
+        </bolt>
+        <bolt>
+            <id>TradeGorderDubboBolt</id>
+            <clazz>com.netease.kaola.distmerchant.order.TraderGorderDubboBolt</clazz>
+            <outputfield>gorder_id</outputfield>
+            <grouping>fields</grouping>
+            <nextbolt>OrderAddressDubboBolt</nextbolt> <!-- 下一个节点 -->
+        </bolt>
+        <bolt>
+            <id>OrderAddressDubboBolt</id>
+            <clazz>com.netease.kaola.distmerchant.order.OrderAddressDubboBolt</clazz>
+            <outputfield>gorder_id</outputfield>
+            <grouping>fields</grouping>
+            <nextbolt>ItemRefundDubboBolt</nextbolt> <!-- 下一个节点 -->
+        </bolt>
+        <bolt>
+            <id>ItemRefundDubboBolt</id>
+            <clazz>com.netease.kaola.distmerchant.order.RefundItemDubboBolt</clazz>
+            <outputfield>gorder_id</outputfield>
+            <grouping>fields</grouping>
+            <nextbolt>GorderSearchSaveBolt</nextbolt> <!-- 下一个节点 -->
+        </bolt>
+        <!-- 末节点不要配置outputfield，否则emit消息发送没人处理acker等待超时，会导致整个topology失败回滚 -->
+        <bolt>
+            <id>GorderSearchSaveBolt</id>
+            <clazz>com.netease.kaola.distmerchant.order.DistOrderSearchSaveBolt</clazz>
+            <grouping>fields</grouping>
+        </bolt>
+    </bolts>
+
+    <bolts>
+        <spout>
+            <id>GorderIncrSpout</id>
+            <datasource>dist_start</datasource>
+            <!-- language=sql -->
+            <query>select id as incrTableDeleteKey, gorder_id from dist_gorder_incr limit 1000</query>
+            <insert>insert into dist_gorder_incr(gorder_id) values (?)</insert>
+            <delete>delete from dist_gorder_incr where id = ?</delete>
+        </spout>
+        <bolt>
+            <id>DistGorderTableBolt</id>
+            <datasource>dist_start</datasource>
+            <!-- language=sql -->
+            <query>select benefit_user as shop_id from dist_gorder where gorder_id = ?</query>
+        </bolt>
+        <bolt>
+            <id>TradeGorderDubboBolt</id>
+            <dubbo>gorderCompose</dubbo>
+        </bolt>
+        <bolt>
+            <id>OrderAddressDubboBolt</id>
+            <dubbo>orderAddressCompose</dubbo>
+        </bolt>
+        <bolt>
+            <id>ItemRefundDubboBolt</id>
+            <dubbo>aftersaleInfoFacade</dubbo>
+        </bolt>
+        <bolt>
+            <id>GorderSearchSaveBolt</id>
+            <datasource>dist_order_elastic_search</datasource>
+            <outputcolums>
+                shop_id, gorder_id,
+                order_id, order_status, buy_account_name, buy_account_phone, order_time, order_pay_amount,
+                item_id, has_refund, refund_apply_type, refund_apply_time, goods_id, goods_name, goods_img, sku_id, sku_desc, unit_price, item_count
+            </outputcolums>
+        </bolt>
+    </bolts>
+</topology>

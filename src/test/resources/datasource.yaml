@@ -1,0 +1,11 @@
+dist_start:
+  rds.url: jdbc:mysql:
+  rds.username: dist_star
+  rds.password: $dist_star!#%
+  slave.rds.driver: com.mysql.jdbc.Driver
+
+dist_start_read:
+  rds.url.jdbc: mysql://
+  rds.username: dist_read_only
+  rds.password: RULmCpyVx
+  rds.driver: com.mysql.jdbc.Driver
